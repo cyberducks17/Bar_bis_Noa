@@ -14,7 +14,7 @@ def check_syn_ack(conn):
     data = conn.recv(SEND_BLOCK_SIZE).decode()
 
     try:
-        headers_and_data = json.loads(data)
+        headers_and_data = json.loads(data.replace("'",'"'))
 
         syn_client = headers_and_data["SYN"]
         seq_client = headers_and_data["SEQ"]
@@ -33,12 +33,13 @@ def check_syn_ack(conn):
         server_ack = seq_client + syn_client
 
         data_to_send = {"SYN": 1, "SEQ": seq_server, "ACK": server_ack}
+
         conn.send(str(data_to_send).encode())
         seq_server += 1
 
         data = conn.recv(SEND_BLOCK_SIZE).decode()
 
-        headers_and_data = json.loads(data)
+        headers_and_data = json.loads(data.replace("'",'"'))
 
         ack_client = headers_and_data["ACK"]
         seq_client = headers_and_data["SEQ"]
@@ -61,7 +62,7 @@ def get_client_request(conn, seq_server, server_ack):
     data = conn.recv(SEND_BLOCK_SIZE).decode()
     
     try:
-        headers_and_data = json.loads(data)
+        headers_and_data = json.loads(data.replace("'",'"'))
         
         seq_client = headers_and_data["SEQ"]
         ack_client = headers_and_data["ACK"]
@@ -83,7 +84,7 @@ def get_client_request(conn, seq_server, server_ack):
         conn.send(str(data_to_send).encode())
 
         if "Hi SpongeBob SquarePants it Patrick!" not in payload:
-            data_to_send["DATA"] = "ERROR bad request!\nRequest must inculde 'SpongeBob SquarePants'!"
+            data_to_send["DATA"] = "ERROR bad request!\nRequest must inculde 'Hi SpongeBob SquarePants it Patrick!'!"
             seq_server += len(data_to_send["DATA"])
             
             conn.send(str(data_to_send).encode())
@@ -98,8 +99,6 @@ def get_client_request(conn, seq_server, server_ack):
 
 
 def send_data_to_client(conn, seq_server, server_ack, html_path):
-    
-    
     try:
         data_to_send = {"SEQ": seq_server, "ACK": server_ack, "DATA": "START\n"}
 
@@ -107,17 +106,17 @@ def send_data_to_client(conn, seq_server, server_ack, html_path):
         html_data = html_file.read(FILE_READ_BLOCK)
         while html_data:
             
-            data_to_send["DATA"] = "{}{}".format(data_to_send["DATA"], base64.b64encode(html_data.encode()))
+            data_to_send["DATA"] = "{}{}".format(data_to_send["DATA"], base64.b64encode(html_data.encode()).decode())
 
             if len(html_data) < FILE_READ_BLOCK:
                 data_to_send["DATA"] = "{}\nEND".format(data_to_send["DATA"])
             
-            seq_server += len(data_to_send["DATA"])
-            
             conn.send(str(data_to_send).encode())
 
+            seq_server += len(data_to_send["DATA"])
+
             data = conn.recv(SEND_BLOCK_SIZE).decode()
-            headers_and_data = json.loads(data)
+            headers_and_data = json.loads(data.replace("'",'"'))
 
             seq_client = headers_and_data["SEQ"]
             ack_client = headers_and_data["ACK"]
@@ -136,7 +135,7 @@ def send_data_to_client(conn, seq_server, server_ack, html_path):
 
         data = conn.recv(SEND_BLOCK_SIZE).decode()
         
-        headers_and_data = json.loads(data)
+        headers_and_data = json.loads(data.replace("'",'"'))
 
         fin_client = headers_and_data["FIN"]
         ack_client = headers_and_data["ACK"]
@@ -155,7 +154,7 @@ def send_data_to_client(conn, seq_server, server_ack, html_path):
 
         data = conn.recv(SEND_BLOCK_SIZE).decode()
         
-        headers_and_data = json.loads(data)
+        headers_and_data = json.loads(data.replace("'",'"'))
 
         ack_client = headers_and_data["ACK"]
 
@@ -170,7 +169,7 @@ def send_data_to_client(conn, seq_server, server_ack, html_path):
         return 0
 
 
-def serve(conn):
+def serve(conn, html_file_path):
     seq_server, server_ack = check_syn_ack(conn)
         
     if not seq_server:
@@ -216,7 +215,7 @@ def server_program():
             conn, address = server_socket.accept()  # accept new connection
             print("Connection from: " + str(address))
 
-            thread = threading.Thread(target=serve, args=(conn,))
+            thread = threading.Thread(target=serve, args=(conn, html_file_path))
             thread.start()
         except Exception as err:
             print(err)
