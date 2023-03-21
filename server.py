@@ -7,7 +7,7 @@ import base64
 
 
 SEND_BLOCK_SIZE = 8192
-FILE_READ_BLOCK = SEND_BLOCK_SIZE / 2
+FILE_READ_BLOCK = int(SEND_BLOCK_SIZE / 2)
 
 
 # Check if the client established a connection correctly.
@@ -111,15 +111,16 @@ def send_data_to_client(conn, seq_server, server_ack, html_path):
     # In any case of error print the error and return 0, 0 to signle to close the connection
     try:
         data_to_send = {"SEQ": seq_server, "ACK": server_ack, "DATA": "START\n"}  # Create dictionry with the values to send
-
+        
         # Read the input html file to send it in segmants to the client
         html_file = open(html_path, "r")
+        
         html_data = html_file.read(FILE_READ_BLOCK)  # Read the file in blocks
         # Run while there is still data to read
+
         while html_data:
             # Encode the data to send with base64
             data_to_send["DATA"] = "{}{}".format(data_to_send["DATA"], base64.b64encode(html_data.encode()).decode())
-
             # When reach the last block of the file add END to the data so the client will now to send FIN
             if len(html_data) < FILE_READ_BLOCK:
                 data_to_send["DATA"] = "{}\nEND".format(data_to_send["DATA"])
@@ -134,7 +135,6 @@ def send_data_to_client(conn, seq_server, server_ack, html_path):
 
             seq_client = int(headers_and_data["SEQ"])
             ack_client = int(headers_and_data["ACK"])
-
             # If true then client had sent worng input so will close the connection
             if not seq_client == server_ack:
                 raise Exception("client SEQ must be the same as server ACK")
@@ -146,14 +146,16 @@ def send_data_to_client(conn, seq_server, server_ack, html_path):
             html_data = html_file.read(FILE_READ_BLOCK)  # Read the file in blocks
             data_to_send = {"SEQ": seq_server, "ACK": server_ack, "DATA": ""}  # Create dictionry with the values to send
 
+        html_file.close()
+
         data = conn.recv(SEND_BLOCK_SIZE).decode()  # recv the input from the server
         
         # When dict int python use ' insted of " so in order that the json will work you need to change it to "
         headers_and_data = json.loads(data.replace("'", '"'))
 
-        fin_client = headers_and_data["FIN"]
-        ack_client = headers_and_data["ACK"]
-
+        fin_client = int(headers_and_data["FIN"])
+        ack_client = int(headers_and_data["ACK"])
+        
         # If true then client had sent worng input so will close the connection
         if not fin_client == 1:
             raise Exception("client must set FIN flag to 1")
